@@ -70,6 +70,10 @@ class FakeEmbeddings:
 class FakeLLM:
     """Canned answers keyed by substring of the prompt.
 
+    Answers are keyed against the question alone, not the whole prompt: the
+    prompt also carries the retrieved passages, so matching on all of it would
+    let document text trigger a canned answer for an unrelated question.
+
     Tracks concurrent entries so a test can assert the service honours its
     semaphore bound by inspecting `max_concurrent` — deterministic, no sleeps
     required to observe it.
@@ -98,9 +102,9 @@ class FakeLLM:
         try:
             if self.delay:
                 await asyncio.sleep(self.delay)
-            haystack = user.lower()
+            question = user.rsplit("Question:", 1)[-1].strip().lower()
             for key, answer in self.answers.items():
-                if key.lower() in haystack:
+                if key.lower() in question:
                     return LLMResult(
                         text=f"{answer}\nSOURCES: {self.sources}",
                         prompt_tokens=120,
