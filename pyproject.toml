@@ -1,0 +1,43 @@
+[project]
+name = "document-qa-api"
+version = "0.1.0"
+description = "Retrieval-augmented question answering over PDF and JSON documents"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "python-multipart>=0.0.12",
+    "langchain-text-splitters>=0.3",
+    "pypdf>=5.1",
+    "openai>=1.54",
+    "structlog>=24.4",
+    "faiss-cpu>=1.9",
+    "numpy>=2.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.7",
+]
+
+# Deploying an app, not publishing a library: no build backend needed.
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["error::DeprecationWarning:app.*"]

@@ -1,0 +1,74 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>
+endobj
+5 0 obj
+<< /Length 586 >>
+stream
+BT
+/F1 11 Tf
+72 720 Td
+16 TL
+(Acme Corp - System and Organization Controls \(SOC 2 Type II\)) Tj T*
+() Tj T*
+(Section 1: Infrastructure and Subservice Organizations) Tj T*
+() Tj T*
+(Acme Corp relies on Amazon Web Services \(AWS\) and Google Cloud) Tj T*
+(Platform \(GCP\) as its infrastructure providers. No other cloud) Tj T*
+(providers are used to host production workloads.) Tj T*
+() Tj T*
+(The primary data center region is us-east-1 \(Northern Virginia\).) Tj T*
+(Encrypted backups are replicated to eu-west-1 \(Ireland\) every) Tj T*
+(six hours and retained for 35 days.) Tj T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Length 645 >>
+stream
+BT
+/F1 11 Tf
+72 720 Td
+16 TL
+(Section 2: Incident Response and Customer Notification) Tj T*
+() Tj T*
+(Acme Corp maintains formally defined criteria for notifying) Tj T*
+(customers of any security incident affecting the confidentiality,) Tj T*
+(integrity or availability of their data. Affected customers are) Tj T*
+(notified within 24 hours of incident confirmation.) Tj T*
+() Tj T*
+(Section 3: Monitoring) Tj T*
+() Tj T*
+(The service is monitored using Application Performance Monitoring) Tj T*
+(\(APM\) and End User Monitoring \(EUM\). Digital Experience Monitoring) Tj T*
+(\(DEM\) is not performed as part of the monitoring process.) Tj T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000373 00000 n 
+0000001010 00000 n 
+0000001706 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1776
+%%EOF
