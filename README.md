@@ -6,6 +6,9 @@ questions file and a document; get back one structured answer per question, each
 carrying the passages it came from, or an explicit `Data-Not-Found` when the
 document does not support an answer. Unanswerable questions are treated as a
 correct outcome rather than a failure — a wrong answer is worse than no answer.
+Three negatives are kept apart: the document is silent (`Data-Not-Found`), the
+document says the question does not apply (`N/A ...`), and the question failed
+(`error`).
 
 ## Architecture
 
@@ -19,7 +22,7 @@ correct outcome rather than a failure — a wrong answer is worse than no answer
                  │ pages
      ┌───────────▼────────────┐
      │  ingestion/            │  pypdf per page │ JSON → "key.path: value"
-     │  loaders, chunking     │  split per page, page numbers preserved
+     │  loaders, chunking     │  split per page and per record
      └───────────┬────────────┘
                  │ chunks
      ┌───────────▼────────────┐        ┌──────────────────────┐
@@ -34,7 +37,7 @@ correct outcome rather than a failure — a wrong answer is worse than no answer
      └───────────┬────────────┘        └──────────────────────┘
                  │ answers + citations + token usage
                  ▼
-            JSON response
+            JSON response  ◀── static/index.html posts here (GET / serves the UI)
 ```
 
 Everything that talks to a third party implements a Protocol in
@@ -210,6 +213,11 @@ All live in `app/config.py` and are overridable by environment variable
    insufficient, and to return JSON: `{"answer": "...", "sources": ["A", "C"]}`.
 6. Those letters map back to chunk ids on our side, producing citations with
    page number and excerpt. `found` is false when the sentinel comes back.
+7. A third outcome sits between the two: when the passages say the question is
+   out of scope — no such system, the regulation does not apply — the answer
+   begins `N/A` and gives the reason. That is distinct from `Data-Not-Found`,
+   which means the passages are silent, and from a plain `No`, which means the
+   question applies and the answer is negative.
 
 Both details in step 5 were forced by measurement rather than chosen up front:
 
@@ -244,9 +252,12 @@ happens to be present cannot be used by accident.
 so lexical overlap produces genuine cosine similarity — otherwise every score
 would sit near zero and retrieval assertions would pass for the wrong reason.
 
-Unit tests cover JSON flattening, PDF loading (including the scanned-PDF and
-page-limit paths), chunk overlap and page-boundary integrity, question parsing
-and every limit. Integration tests cover both happy paths, the sentinel path,
+Unit tests cover JSON flattening and record boundaries, identifier stripping,
+PDF loading (including the scanned-PDF and page-limit paths), chunk overlap and
+page-boundary integrity, question parsing and every limit. The OpenAI adapters
+are covered against a stub client, including the batch-splitting path — the API
+limit is 100 texts per call, which no fixture small enough to commit would ever
+reach, so it would otherwise ship unexercised. Integration tests cover both happy paths, the sentinel path,
 each error envelope, and a timeout.
 
 `tests/integration/test_grounding.py` runs a batch of real security-questionnaire
@@ -266,9 +277,17 @@ how many questions arrive.
 ## Evaluation
 
 The sample answer set shipped with the challenge doubles as ground truth, so
-answer quality is measured rather than asserted. `evaluate.py` posts all 19
-questions and compares each verdict (Yes / No / N/A / Data-Not-Found) against
-the expected answer.
+answer quality is measured rather than asserted. `scripts/evaluate.py` posts a
+whole question set and compares each verdict (Yes / No / N/A / Data-Not-Found)
+against the expected answer:
+
+```bash
+uv run uvicorn app.main:app --port 8000
+uv run python scripts/evaluate.py --csv <answer-key.csv> --document <evidence.json>
+```
+
+The answer key itself is not in this repository — it is the challenge author's
+material rather than part of the deliverable — so `--csv` points at your copy.
 
 | Evidence | Verdict agreement | Answers with a citation | Cost |
 |----------|------------------|------------------------|------|
@@ -282,15 +301,12 @@ The second number is not a worse result. Every one of its six misses is a
 `Data-Not-Found` for a topic genuinely absent from that smaller knowledge base —
 the correct response, scored as a miss because the answer key was written
 against a fuller document. The model demonstrably knew those answers, because it
-produced them from the full document in the first run, and declined when the
+produced them from the full document in the first run, and declined once the
 evidence was removed. That is the property retrieval-grounded answering exists
 to provide.
 
-The second run is the stronger result, for a reason the score hides: the model
-demonstrably knew those answers, because it produced them from the fuller
-document in the first run. Given a knowledge base that omits them, it declined
-instead of recalling them. That is the property retrieval-grounded answering
-exists to provide.
+Verdict agreement is coarse: it says an answer points the same direction as the
+key, not that it is well worded. Treat the not-found row as the headline.
 
 ## Observability
 
@@ -312,6 +328,13 @@ visible to the caller without reading logs.
 
 ## Design decisions and tradeoffs
 
+- **Chunking follows record boundaries, not character counts.** JSON is split so
+  one logical record stays whole; on the sample, 12 of 13 chunks previously
+  straddled two questionnaire rows, with one row's question separated from its
+  own answer. Reported honestly: fixing this changed verdict agreement not at
+  all, because `TOP_K=5` over 13 chunks was already sweeping up both halves. It
+  cut prompt tokens 14% and removes a failure that appears as soon as a document
+  is large enough for `TOP_K` to be selective.
 - **faiss in-memory, rebuilt per request.** At document scale an exact flat
   index searches in microseconds, so there is no recall tradeoff and nothing to
   operate. The cost is that an identical document is re-embedded on every
@@ -334,6 +357,34 @@ visible to the caller without reading logs.
   `langchain-openai` would have hidden `response.usage`, which is exactly what
   `meta.tokens` needs, and an LCEL chain would have fought the per-question
   semaphore, per-question timeout and citation parsing.
+- **Every field of a record is embedded, not a chosen few.** For the sample
+  questionnaire that means `question`, `answer`, `comments` and `confidence` all
+  go into one vector. Selecting "the answer and comments columns" would score
+  better on that one file and worse on everything else, and the endpoint accepts
+  arbitrary JSON. The single exception is narrow enough to defend: a value is
+  dropped only when the key reads like an identifier *and* the value is an
+  unbroken hex or uuid token, so a field named `id` holding a sentence survives.
+  That removed 7% of the embedded text from the sample at no cost in coverage.
+- **One vector per chunk, not a separate index of question text.** For a
+  question-and-answer bank, indexing only the stored question as a retrieval key
+  and carrying the answer as payload would be sharper — it compares like with
+  like. It also only works on documents that happen to have a question field,
+  which a SOC 2 PDF does not, and it fails on paraphrase where matching answer
+  prose still succeeds. One code path that handles both document shapes was
+  worth more than the sharper result on one of them.
+- **`N/A` is a prompt rule, not a response field.** The supplied answer key uses
+  it for four of nineteen questions, and it is genuinely a third thing — neither
+  an answer nor silence. Adding a `verdict` enum to the schema would have forced
+  every document type into a questionnaire's vocabulary; teaching the prompt the
+  distinction cost one paragraph. Worth noting it took two attempts: the first
+  version over-applied and turned "we do not have a dedicated compliance
+  officer" into `N/A`, which is a `No`. Only running both evaluation documents
+  caught the regression.
+- **`MIN_SCORE` is a backstop, not a tuned parameter.** Observed cosine scores on
+  real documents run 0.2–0.6, so a floor of 0.15 rarely fires; most not-found
+  results come from the model returning the sentinel. Raising it would save
+  tokens and risk suppressing real answers. Tuning it on nineteen questions
+  would be overfitting, so it stays conservative and env-overridable.
 
 ### What I would add with more time
 
@@ -349,4 +400,4 @@ visible to the caller without reading logs.
   does not spend a call on every question.
 - Deliberately cut for time: a `/metrics` endpoint (latency and token usage go
   to the JSON logs instead), magic-byte content sniffing beyond the extension
-  check, and an exhaustive test matrix beyond the ~48 tests here.
+  check, and an exhaustive test matrix beyond the 68 tests here.
