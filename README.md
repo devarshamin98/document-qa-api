@@ -222,7 +222,7 @@ sampling variance there is a defect rather than creativity.
 ## Tests
 
 ```bash
-uv run pytest -q                              # 52 tests
+uv run pytest -q                              # 60 tests
 uv run ruff check . && uv run ruff format --check .
 ```
 
