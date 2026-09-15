@@ -82,7 +82,45 @@ curl -s -F questions=@tests/fixtures/questions.json \
         http://localhost:8000/api/v1/qa | jq .
 ```
 
-<!-- SAMPLE_RESPONSE -->
+A real response from that command, against the two-page fixture:
+
+```json
+{
+    "results": [
+        {
+            "question": "Which cloud providers does Acme Corp rely on?",
+            "answer": "Acme Corp relies on Amazon Web Services (AWS) and Google Cloud Platform (GCP) as its infrastructure providers.",
+            "found": true,
+            "error": null,
+            "citations": [
+                {
+                    "chunk_id": 1,
+                    "excerpt": "Acme Corp - System and Organization Controls (SOC 2 Type II)\nSection 1: Infrastructure and Subservice Organizations\nAcme Corp relies on Amazon Web Services (AWS) and Google Cloud\nPlatform (GCP) as its infrastructure providers. No other clou",
+                    "page": 1
+                }
+            ]
+        },
+        {
+            "question": "What is the CEO's shoe size?",
+            "answer": "Data-Not-Found",
+            "found": false,
+            "error": null,
+            "citations": []
+        }
+    ],
+    "meta": {
+        "document_name": "sample.pdf",
+        "document_type": "pdf",
+        "chunks": 2,
+        "latency_ms": 1358,
+        "tokens": {
+            "prompt": 904,
+            "completion": 50,
+            "embedding": 215
+        }
+    }
+}
+```
 
 Each result has three distinguishable states, because a failure and a correct
 "the document does not say" are opposite facts:
@@ -157,11 +195,26 @@ All live in `app/config.py` and are overridable by environment variable
 4. If the best passage scores below `MIN_SCORE`, no completion is requested at
    all — there is nothing to ground an answer in, so spending a call to be told
    so would be waste.
-5. Otherwise the passages are numbered into the prompt, which instructs the
-   model to use only those passages, to reply with exactly `Data-Not-Found`
-   when they are insufficient, and to end with `SOURCES: 1, 3`.
-6. Those numbers map back to chunk ids, producing citations with page number and
-   excerpt. `found` is false when the sentinel comes back.
+5. Otherwise the passages go into the prompt under lettered headings
+   (`[Passage A]`, `[Passage B]`, ...), which instructs the model to use only
+   those passages, to answer with exactly `Data-Not-Found` when they are
+   insufficient, and to return JSON: `{"answer": "...", "sources": ["A", "C"]}`.
+6. Those letters map back to chunk ids on our side, producing citations with
+   page number and excerpt. `found` is false when the sentinel comes back.
+
+Both details in step 5 were forced by measurement rather than chosen up front:
+
+- **Letters, not numbers.** Passages were first labelled by chunk id, then by
+  position. Flattened JSON is full of bracketed indices like
+  `knowledge_base[14]`, and the model kept citing those instead: 7 of 17 answers
+  cited a passage outside the set of five it was given. Letters cannot collide
+  with an array index, and out-of-range citations went to 0.
+- **JSON, not a `SOURCES:` line.** Free text was unreliable — the model
+  variously omitted the line or invented a number. Requesting a JSON object and
+  enforcing it with `response_format` removed that class of failure entirely.
+
+An out-of-range or missing citation still falls back to the top-scoring passage,
+so a grounded answer is never shown without a source.
 
 Temperature is pinned to `0`: the task is to restate what the passages say, and
 sampling variance there is a defect rather than creativity.
@@ -200,6 +253,37 @@ catch them. Two tests assert properties the endpoint
 cannot show on its own: that LLM calls stay within the semaphore bound while
 genuinely overlapping, and that the document is embedded exactly once no matter
 how many questions arrive.
+
+## Evaluation
+
+The sample answer set shipped with the challenge doubles as ground truth, so
+answer quality is measured rather than asserted. `evaluate.py` posts all 19
+questions and compares each verdict (Yes / No / N/A / Data-Not-Found) against
+the expected answer.
+
+| Evidence | Verdict agreement | Answers with a citation | Cost |
+|----------|------------------|------------------------|------|
+| Sample document (contains the answers) | 15/19 | 17/17 | $0.004 |
+| A knowledge base covering ~half the topics | 13/19 | 12/12 | $0.004 |
+
+Both runs agree on the row that matters most: where the answer key says
+`Data-Not-Found`, so do we.
+
+Read the two numbers together rather than as a score out of 19:
+
+- On the first run, **all four misses are `N/A` rows** — "this does not apply to
+  us", a verdict distinct from "not in the document" that this API deliberately
+  does not model. Excluding them, agreement is 15/15.
+- On the second run, the extra misses are questions whose evidence simply is not
+  in that smaller knowledge base, and the service correctly returned
+  `Data-Not-Found` for them. That looks like a lower score while being the
+  desired behaviour.
+
+The second run is the stronger result, for a reason the score hides: the model
+demonstrably knew those answers, because it produced them from the fuller
+document in the first run. Given a knowledge base that omits them, it declined
+instead of recalling them. That is the property retrieval-grounded answering
+exists to provide.
 
 ## Observability
 

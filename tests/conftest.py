@@ -7,6 +7,7 @@ nothing here can reach OpenAI even if a key is present in the environment.
 
 import asyncio
 import hashlib
+import json
 import math
 import re
 from collections.abc import AsyncIterator, Sequence
@@ -89,7 +90,7 @@ class FakeLLM:
         answers: dict[str, str] | None = None,
         *,
         delay: float = 0.0,
-        sources: str = "1",
+        sources: str = "A",
     ) -> None:
         self.answers = dict(answers or {})
         self.delay = delay
@@ -111,11 +112,15 @@ class FakeLLM:
             for key, answer in self.answers.items():
                 if key.lower() in question:
                     return LLMResult(
-                        text=f"{answer}\nSOURCES: {self.sources}",
+                        text=json.dumps({"answer": answer, "sources": [self.sources]}),
                         prompt_tokens=120,
                         completion_tokens=24,
                     )
-            return LLMResult(text=f"{NOT_FOUND}\nSOURCES:", prompt_tokens=120, completion_tokens=4)
+            return LLMResult(
+                text=json.dumps({"answer": NOT_FOUND, "sources": []}),
+                prompt_tokens=120,
+                completion_tokens=4,
+            )
         finally:
             self._active -= 1
 

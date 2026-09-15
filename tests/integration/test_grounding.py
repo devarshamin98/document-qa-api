@@ -55,7 +55,9 @@ UNANSWERABLE = [
     "for FDA-regulated systems?",
 ]
 
-_PASSAGE_RE = re.compile(r"\[(\d+)\]\s(.*?)(?=\n\n\[\d+\]\s|\n\nQuestion:)", re.DOTALL)
+_PASSAGE_RE = re.compile(
+    r"\[Passage ([A-Z]+)\]\n(.*?)(?=\n\n\[Passage [A-Z]+\]\n|\n\nQuestion:)", re.DOTALL
+)
 
 
 class PassageEchoLLM:
@@ -68,17 +70,24 @@ class PassageEchoLLM:
 
     def __init__(self) -> None:
         self.calls = 0
-        self.passages_seen: list[list[tuple[int, str]]] = []
+        self.passages_seen: list[list[tuple[str, str]]] = []
 
     async def complete(self, system: str, user: str) -> LLMResult:
         self.calls += 1
-        passages = [(int(n), text.strip()) for n, text in _PASSAGE_RE.findall(user)]
+        passages = [(label, text.strip()) for label, text in _PASSAGE_RE.findall(user)]
         self.passages_seen.append(passages)
         if not passages:
-            return LLMResult(text=f"{NOT_FOUND}\nSOURCES:", prompt_tokens=50, completion_tokens=4)
-        cited = ", ".join(str(number) for number, _ in passages[:2])
+            return LLMResult(
+                text=json.dumps({"answer": NOT_FOUND, "sources": []}),
+                prompt_tokens=50,
+                completion_tokens=4,
+            )
         body = " ".join(text for _, text in passages[:2])
-        return LLMResult(text=f"{body}\nSOURCES: {cited}", prompt_tokens=400, completion_tokens=60)
+        return LLMResult(
+            text=json.dumps({"answer": body, "sources": [label for label, _ in passages[:2]]}),
+            prompt_tokens=400,
+            completion_tokens=60,
+        )
 
 
 @pytest.fixture
@@ -143,15 +152,18 @@ async def test_citations_point_at_passages_that_were_actually_retrieved(
     async with client_for(llm) as client:
         response = await post(client, list(ANSWERABLE))
 
-    retrieved_ids = {number for passages in llm.passages_seen for number, _ in passages}
-    passage_text = {n: t for passages in llm.passages_seen for n, t in passages}
+    # Passages are numbered by position in the prompt, so a citation is verified
+    # by its text matching a passage that was actually sent, not by id equality.
+    sent = [text for passages in llm.passages_seen for _, text in passages]
 
     checked = 0
     for result in response.json()["results"]:
         for citation in result["citations"]:
             checked += 1
-            assert citation["chunk_id"] in retrieved_ids, "cited a passage never retrieved"
-            assert passage_text[citation["chunk_id"]].startswith(citation["excerpt"][:60])
+            excerpt = citation["excerpt"][:60]
+            assert any(passage.startswith(excerpt) for passage in sent), (
+                f"cited an excerpt that was never sent to the model: {excerpt!r}"
+            )
             assert citation["page"] == 1, "a JSON document is one synthetic page"
 
     # Without this the loop above passes vacuously whenever retrieval returns

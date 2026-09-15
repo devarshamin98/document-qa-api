@@ -172,9 +172,9 @@ class QAService:
                     0,
                 )
 
-        text, cited_ids = parse_answer(result.text)
+        text, cited_positions = parse_answer(result.text)
         found = not is_not_found(text)
-        citations = _build_citations(hits, cited_ids) if found else []
+        citations = _build_citations(hits, cited_positions) if found else []
 
         log.info(
             "question_answered",
@@ -198,14 +198,14 @@ class QAService:
         )
 
 
-def _build_citations(hits: Sequence[ScoredChunk], cited_ids: Sequence[int]) -> list[Citation]:
-    """Map the passage numbers the model cited back onto the retrieved chunks.
+def _build_citations(hits: Sequence[ScoredChunk], cited: Sequence[int]) -> list[Citation]:
+    """Map the passage positions the model cited back onto the retrieved chunks.
 
-    Falls back to the top hit when the model cited nothing usable, so a grounded
-    answer is never presented without a source.
+    `cited` holds 1-based positions in the prompt, not chunk ids. Out-of-range
+    positions are dropped, and an answer that cited nothing usable falls back to
+    the top hit, so a grounded answer is never shown without a source.
     """
-    by_id = {hit.chunk.id: hit.chunk for hit in hits}
-    chosen = [by_id[chunk_id] for chunk_id in cited_ids if chunk_id in by_id]
+    chosen = [hits[position - 1].chunk for position in cited if 1 <= position <= len(hits)]
     if not chosen:
         chosen = [hits[0].chunk]
 

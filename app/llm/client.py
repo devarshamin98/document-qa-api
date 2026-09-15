@@ -31,6 +31,9 @@ class OpenAILLM:
             model=self._model,
             temperature=self._temperature,
             max_tokens=self._max_tokens,
+            # The prompt asks for a JSON object; enforcing it here means a
+            # malformed citation list cannot reach the parser.
+            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
