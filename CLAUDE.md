@@ -111,7 +111,7 @@ Response `200`:
     },
     {
       "question": "What is your CEO's shoe size?",
-      "answer": "Data Not Available",
+      "answer": "Data-Not-Found",
       "found": false,
       "error": null,
       "citations": []
@@ -155,7 +155,7 @@ Exceeding a limit is a `413` or `422` with the envelope above, never a 500.
 ## Grounding rules
 
 - Prompt instructs the model to answer **only** from provided context and to reply
-  with the exact sentinel `Data Not Available` if the context doesn't support an
+  with the exact sentinel `Data-Not-Found` if the context doesn't support an
   answer. `found` is derived from that sentinel plus a retrieval-score floor.
 - Every context chunk is numbered in the prompt; the model is asked to reference
   chunk numbers it used. Those map back to `citations`.

@@ -10,7 +10,7 @@ from collections.abc import Sequence
 
 from app.core.ports import Chunk
 
-NOT_FOUND = "Data Not Available"
+NOT_FOUND = "Data-Not-Found"
 
 _SOURCES_RE = re.compile(r"^\s*SOURCES\s*:\s*(.*)$", re.IGNORECASE | re.MULTILINE)
 

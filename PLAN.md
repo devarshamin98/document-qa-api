@@ -56,7 +56,7 @@ Use plan mode for this one only. Review the plan for two minutes, then approve.
 > `RecursiveCharacterTextSplitter` preserving page metadata); Protocols in
 > `core/ports.py`; OpenAI embeddings adapter with batching (<=100 per call) and a
 > FAISS store adapter; `prompts.py` with a grounded prompt that numbers context
-> chunks and requires the exact sentinel `Data Not Available`; `qa/service.py`
+> chunks and requires the exact sentinel `Data-Not-Found`; `qa/service.py`
 > that ingests once, embeds all questions in one call, retrieves top-k, answers
 > concurrently under a semaphore sized from config, and maps cited chunk numbers
 > to citations; `POST /api/v1/qa` per the API contract with every limit enforced

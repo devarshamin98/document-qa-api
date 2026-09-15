@@ -3,7 +3,7 @@
 A FastAPI service that answers a list of questions about an uploaded document
 (PDF or JSON) using retrieval-augmented generation with `gpt-4o-mini`. Upload a
 questions file and a document; get back one structured answer per question, each
-carrying the passages it came from, or an explicit `Data Not Available` when the
+carrying the passages it came from, or an explicit `Data-Not-Found` when the
 document does not support an answer. Unanswerable questions are treated as a
 correct outcome rather than a failure — a wrong answer is worse than no answer.
 
@@ -158,7 +158,7 @@ All live in `app/config.py` and are overridable by environment variable
    all — there is nothing to ground an answer in, so spending a call to be told
    so would be waste.
 5. Otherwise the passages are numbered into the prompt, which instructs the
-   model to use only those passages, to reply with exactly `Data Not Available`
+   model to use only those passages, to reply with exactly `Data-Not-Found`
    when they are insufficient, and to end with `SOURCES: 1, 3`.
 6. Those numbers map back to chunk ids, producing citations with page number and
    excerpt. `found` is false when the sentinel comes back.

@@ -1,0 +1,21 @@
+[
+  "Where are your data centres located?",
+  "Do you monitor and restrict the installation of unauthorized software?",
+  "Is business continuity and operational resilience documentation available to authorized stakeholders?",
+  "Are private keys provisioned for a unique purpose managed, and is cryptography secret?",
+  "Are data center environmental control systems designed to monitor, maintain, and test that on-site temperature and humidity conditions fall within accepted industry standards effectively implemented and maintained?",
+  "Are cryptographically secure and standardized network protocols implemented for the management, import, and export of data?",
+  "Are infrastructure and virtualization security policies and procedures established, documented, approved, communicated, applied, evaluated, and maintained?",
+  "Are asset management and malware protection policies and procedures reviewed and updated at least annually?",
+  "Do transport containers protect against physical damage?",
+  "Do administrative and file sharing interfaces for web server software run on non-standard ports (e.g., Not 21, 80 and 443)?",
+  "Does the Incident Response Plan include event reporting mechanism to support the reporting action, and to list all necessary actions in case of an information security Event?",
+  "Is there a dedicated sanctions compliance officer?",
+  "Is there a Quality Assurance or other organization that ensures software integrity and adherence to internal processes for software development for FDA-regulated systems?",
+  "Does the Wireless Security Policy prohibit wired and wireless network connections at the same time?",
+  "Does the Wireless Security Policy require continuous monitoring and alerting to security personnel, or quarterly scanning for rogue wireless access points?",
+  "Does the approved anti-malware policy or program mandate an interval between the availability of a new anti-malware signature update and its deployment no longer than 24 hours?",
+  "Does the Hypervisor system lock accounts after 3-5 invalid login attempts?",
+  "Do asset inventory and management processes include all physical objects with network connectivity (IoT Devices)?",
+  "Does your organisation have an Identity and Access Management System in place used for the formal request, approval, and provisioning of access to a role?"
+]

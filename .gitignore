@@ -16,3 +16,6 @@ __pycache__/
 # IDE
 .idea/
 .vscode/
+
+# Challenge material provided by Zania, not part of the deliverable
+*.csv

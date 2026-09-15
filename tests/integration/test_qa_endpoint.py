@@ -60,7 +60,7 @@ async def test_unanswerable_question_returns_the_sentinel_not_a_guess(
     unanswered = response.json()["results"][1]
 
     assert unanswered["found"] is False
-    assert unanswered["answer"] == "Data Not Available"
+    assert unanswered["answer"] == "Data-Not-Found"
     assert unanswered["citations"] == []
     # error stays null: the document genuinely does not cover this, which is a
     # correct answer rather than a failure.
@@ -196,4 +196,4 @@ async def test_llm_timeout_degrades_one_question_without_failing_the_request(
     result = response.json()["results"][0]
     assert result["error"] == "TIMEOUT"
     assert result["found"] is False
-    assert result["answer"] == "Data Not Available"
+    assert result["answer"] == "Data-Not-Found"
