@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Document QA</title>
+<style>
+  :root { color-scheme:light dark; --bg:#fff; --fg:#14171a; --muted:#5b6670; --line:#e3e6e8;
+    --ok:#0f7b3f; --okbg:#e6f4ec; --none:#5b6670; --nonebg:#eef0f2; --err:#a4470c; --errbg:#fdf0e3; }
+  @media (prefers-color-scheme:dark) { :root { --bg:#14171a; --fg:#e9edf0; --muted:#9aa5ad; --line:#2a2f34;
+    --ok:#6ddc9b; --okbg:#123024; --none:#9aa5ad; --nonebg:#22272b; --err:#f0a869; --errbg:#3a2510; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,sans-serif; }
+  main { max-width:900px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 24px; }
+  form { display:grid; gap:14px; padding:16px; border:1px solid var(--line); border-radius:8px; }
+  label { display:grid; gap:6px; font-weight:600; } small { font-weight:400; color:var(--muted); }
+  input[type=file], button { font:inherit; } button[disabled] { opacity:.5; cursor:progress; }
+  button { justify-self:start; font-weight:600; padding:8px 16px; border-radius:6px;
+    border:1px solid var(--line); background:var(--fg); color:var(--bg); cursor:pointer; }
+  #status, #meta { color:var(--muted); font-size:.88rem; }
+  #error { padding:12px; border-radius:6px; background:var(--errbg); color:var(--err); font-weight:600; }
+  table { width:100%; border-collapse:collapse; margin-top:24px; }
+  th, td { text-align:left; vertical-align:top; padding:10px 8px; border-bottom:1px solid var(--line); }
+  th { font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.78rem; font-weight:700; white-space:nowrap; }
+  .b-ok { background:var(--okbg); color:var(--ok); } .b-none { background:var(--nonebg); color:var(--none); }
+  .b-err { background:var(--errbg); color:var(--err); }
+  summary { cursor:pointer; color:var(--muted); font-size:.85rem; margin-top:6px; }
+  blockquote { margin:6px 0 0; padding-left:10px; border-left:2px solid var(--line); color:var(--muted); font-size:.87rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Document QA</h1>
+  <p class="sub">Upload a list of questions and a document. Every answer is grounded in the document, or reported as not found.</p>
+  <form id="form">
+    <label>Questions <small>(.json &mdash; a list, or an object with a "questions" list)</small>
+      <input type="file" id="questions" accept=".json,application/json" required /></label>
+    <label>Document <small>(.pdf or .json)</small>
+      <input type="file" id="document" accept=".pdf,.json,application/pdf,application/json" required /></label>
+    <button type="submit" id="submit">Answer questions</button>
+  </form>
+  <p id="status" hidden></p>
+  <div id="error" hidden></div>
+  <table id="results" hidden>
+    <thead><tr><th>Question</th><th>Answer</th><th>Status</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p id="meta" hidden></p>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+
+// Every value rendered below comes from an uploaded document, so it is written
+// with textContent and never interpolated into markup.
+function cell(text) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  return td;
+}
+
+function answerCell(result) {
+  const td = cell(result.answer);
+  if (!result.citations.length) return td;
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = result.citations.length + " citation(s)";
+  details.append(summary);
+  for (const c of result.citations) {
+    const quote = document.createElement("blockquote");
+    quote.textContent = "p." + c.page + " \u00b7 #" + c.chunk_id + " \u2014 " + c.excerpt;
+    details.append(quote);
+  }
+  td.append(details);
+  return td;
+}
+
+// Three states, matching the API: answered, genuinely absent, failed.
+function statusCell(result) {
+  const [label, className] = result.error
+    ? ["Error: " + result.error, "b-err"]
+    : result.found ? ["Answered", "b-ok"] : ["Not found", "b-none"];
+  const td = document.createElement("td");
+  const span = document.createElement("span");
+  span.className = "badge " + className;
+  span.textContent = label;
+  td.append(span);
+  return td;
+}
+
+function showError(message, code) {
+  $("error").hidden = false;
+  $("error").textContent = code ? code + ": " + message : message;
+}
+
+$("form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  for (const id of ["error", "results", "meta"]) $(id).hidden = true;
+  $("rows").replaceChildren();
+  $("status").hidden = false;
+  $("status").textContent = "Answering\u2026";
+  $("submit").disabled = true;
+
+  const body = new FormData();
+  body.append("questions", $("questions").files[0]);
+  body.append("document", $("document").files[0]);
+
+  try {
+    const response = await fetch("/api/v1/qa", { method: "POST", body });
+    const payload = await response.json();
+    if (!response.ok) {
+      showError(payload.error?.message ?? response.statusText, payload.error?.code);
+      return;
+    }
+    for (const result of payload.results) {
+      const row = document.createElement("tr");
+      row.append(cell(result.question), answerCell(result), statusCell(result));
+      $("rows").append(row);
+    }
+    $("results").hidden = false;
+    const m = payload.meta;
+    $("meta").hidden = false;
+    $("meta").textContent = m.document_name + " \u00b7 " + m.chunks + " chunks \u00b7 "
+      + m.latency_ms + " ms \u00b7 " + (m.tokens.prompt + m.tokens.completion)
+      + " LLM tokens, " + m.tokens.embedding + " embedding";
+  } catch (err) {
+    showError("Could not reach the API: " + err.message);
+  } finally {
+    $("status").hidden = true;
+    $("submit").disabled = false;
+  }
+});
+</script>
+</body>
+</html>

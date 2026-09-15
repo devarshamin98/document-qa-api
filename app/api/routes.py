@@ -7,6 +7,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, File, UploadFile
+from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import QAServiceProviderDep, SettingsDep
@@ -35,6 +36,13 @@ router = APIRouter()
 
 READ_CHUNK_BYTES = 1024 * 1024
 SUPPORTED_SUFFIXES = {".pdf", ".json"}
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+
+
+@router.get("/", include_in_schema=False)
+async def index() -> FileResponse:
+    """Serve the upload UI."""
+    return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
 
 @router.get("/health", tags=["ops"])
