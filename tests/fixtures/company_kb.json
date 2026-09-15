@@ -1,0 +1,77 @@
+{
+  "company": "Acme Corp",
+  "knowledge_base": [
+    {
+      "control_id": "DC-01",
+      "topic": "Data centre locations",
+      "statement": "Our data centers are located in the US Central region, specifically hosted within Google Cloud Platform. All customer data is physically stored in the USA.",
+      "details": "We leverage GCP for data hosting, so all data is managed within their secure data centers."
+    },
+    {
+      "control_id": "EP-04",
+      "topic": "Unauthorized software installation",
+      "statement": "Yes. We monitor and restrict the installation of unauthorized software through application whitelisting and blacklisting.",
+      "details": "Only approved applications may be installed, and security approval is required before any freeware or shareware is introduced."
+    },
+    {
+      "control_id": "BC-02",
+      "topic": "Business continuity documentation",
+      "statement": "Yes. Business continuity and operational resilience documentation is available to authorized stakeholders.",
+      "details": "The documentation is reviewed and updated annually to maintain its relevance and effectiveness."
+    },
+    {
+      "control_id": "GRC-09",
+      "topic": "Sanctions compliance officer",
+      "statement": "No. We do not have a dedicated sanctions compliance officer.",
+      "details": "Our internal audit and compliance department oversees regulatory issues, and our compliance program restricts activity with sanctioned countries."
+    },
+    {
+      "control_id": "IAM-01",
+      "topic": "Identity and access management",
+      "statement": "Yes. We operate an Identity and Access Management system covering formal request, approval and provisioning of role-based access.",
+      "details": "Multifactor authentication is enforced and access rights are reviewed periodically."
+    },
+    {
+      "control_id": "CRY-03",
+      "topic": "Private key management",
+      "statement": "Yes. Private keys are provisioned for a unique purpose and cryptographic material is treated as secret.",
+      "details": "Keys are generated using approved cryptographic libraries and every status change is tracked and reported."
+    },
+    {
+      "control_id": "NET-07",
+      "topic": "Network transport protocols",
+      "statement": "All data in transit is protected using TLS 1.2 or TLS 1.3.",
+      "details": "Standardized network protocols are used for the management, import and export of data."
+    },
+    {
+      "control_id": "IR-05",
+      "topic": "Incident response plan",
+      "statement": "Yes. The Incident Response Plan includes an event reporting mechanism and lists the actions required during an information security event.",
+      "details": "Affected customers are notified within 24 hours of incident confirmation."
+    },
+    {
+      "control_id": "ENV-02",
+      "topic": "Data centre environmental controls",
+      "statement": "Yes. Environmental control systems monitor and maintain on-site temperature and humidity within accepted industry standards.",
+      "details": "HVAC and humidity controls are tested on a regular maintenance schedule."
+    },
+    {
+      "control_id": "AST-06",
+      "topic": "Asset inventory scope",
+      "statement": "No. Our asset inventory does not include IoT devices, because we do not operate any.",
+      "details": "A comprehensive inventory is maintained for all physical and logical assets in use."
+    },
+    {
+      "control_id": "VIR-01",
+      "topic": "Infrastructure and virtualization policy",
+      "statement": "Yes. Infrastructure and virtualization security policies are established, documented, approved, communicated, applied, evaluated and maintained.",
+      "details": "Policies are owned by the security team and reviewed on an annual cycle."
+    },
+    {
+      "control_id": "MAL-02",
+      "topic": "Malware protection review cadence",
+      "statement": "Yes. Asset management and malware protection policies are reviewed and updated at least annually.",
+      "details": "Reviews confirm the controls remain aligned with current security practice."
+    }
+  ]
+}

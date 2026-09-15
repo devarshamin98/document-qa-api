@@ -169,7 +169,7 @@ sampling variance there is a defect rather than creativity.
 ## Tests
 
 ```bash
-uv run pytest -q                              # 48 tests
+uv run pytest -q                              # 52 tests
 uv run ruff check . && uv run ruff format --check .
 ```
 
@@ -185,7 +185,18 @@ would sit near zero and retrieval assertions would pass for the wrong reason.
 Unit tests cover JSON flattening, PDF loading (including the scanned-PDF and
 page-limit paths), chunk overlap and page-boundary integrity, question parsing
 and every limit. Integration tests cover both happy paths, the sentinel path,
-each error envelope, and a timeout. Two tests assert properties the endpoint
+each error envelope, and a timeout.
+
+`tests/integration/test_grounding.py` runs a batch of real security-questionnaire
+questions against a knowledge-base fixture. The fake model there can only restate
+the passages it is handed, so a correct answer proves retrieval delivered the
+right passage; a second test asserts every citation points at a passage that was
+actually retrieved rather than invented. A matching batch of questions the
+fixture does not cover asserts the opposite: `200`, every result `found: false`
+with `error: null` and no citations, and questions that fall below the score
+floor never reach the model at all. Both were verified by mutation — inverting
+retrieval and disabling sentinel detection each fail the tests that should
+catch them. Two tests assert properties the endpoint
 cannot show on its own: that LLM calls stay within the semaphore bound while
 genuinely overlapping, and that the document is embedded exactly once no matter
 how many questions arrive.

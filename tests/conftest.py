@@ -40,9 +40,14 @@ class FakeEmbeddings:
     Words hash into buckets, so lexical overlap produces genuine cosine
     similarity. That matters: random vectors would sit near zero and trip the
     `min_score` floor, making retrieval tests pass or fail for the wrong reason.
+
+    The dimension is wide on purpose. At 64 buckets, collisions between
+    unrelated words manufactured similarity — questions with no supporting
+    evidence scored ~0.30, above the `min_score` floor, and the wrong chunk
+    could outrank the right one. At 1024 the same questions score ~0.05.
     """
 
-    DIM = 64
+    DIM = 1024
 
     def __init__(self) -> None:
         self.calls = 0
