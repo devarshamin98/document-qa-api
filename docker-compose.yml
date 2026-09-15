@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: document-qa-api:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      # Optional so `docker compose up` works on a fresh clone: without a key the
+      # API answers 503 NOT_CONFIGURED rather than failing to start.
+      - path: .env
+        required: false
+    restart: unless-stopped

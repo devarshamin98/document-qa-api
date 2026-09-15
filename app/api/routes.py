@@ -77,6 +77,10 @@ async def answer_questions(
         _load_document, document_bytes, suffix, settings.max_pdf_pages
     )
 
+    structlog.contextvars.bind_contextvars(
+        document_type=suffix.lstrip("."), questions=len(parsed_questions)
+    )
+
     # Constructed only once the request is known to be well formed.
     service = provider()
 

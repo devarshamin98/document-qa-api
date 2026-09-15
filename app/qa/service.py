@@ -16,6 +16,9 @@ from app.qa.prompts import NOT_FOUND, SYSTEM_PROMPT, build_user_prompt, is_not_f
 log = structlog.get_logger(__name__)
 
 EXCERPT_CHARS = 240
+# Questions can carry customer specifics, so logs get a prefix, never the whole
+# thing — and never any document text.
+QUESTION_LOG_CHARS = 80
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,21 +96,28 @@ class QAService:
         answers = [answer for answer, _, _ in outcomes]
         latency_ms = int((time.perf_counter() - started) * 1000)
 
+        embedding_tokens = doc_embedded.tokens + question_embedded.tokens
+        prompt_tokens = sum(prompt for _, prompt, _ in outcomes)
+        completion_tokens = sum(completion for _, _, completion in outcomes)
+
         log.info(
             "qa_completed",
             questions=len(answers),
             chunks=len(chunks),
             found=sum(1 for answer in answers if answer.found),
             errors=sum(1 for answer in answers if answer.error),
+            tokens_prompt=prompt_tokens,
+            tokens_completion=completion_tokens,
+            tokens_embedding=embedding_tokens,
             latency_ms=latency_ms,
         )
 
         return QAResult(
             answers=answers,
             chunk_count=len(chunks),
-            embedding_tokens=doc_embedded.tokens + question_embedded.tokens,
-            prompt_tokens=sum(prompt for _, prompt, _ in outcomes),
-            completion_tokens=sum(completion for _, _, completion in outcomes),
+            embedding_tokens=embedding_tokens,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             latency_ms=latency_ms,
         )
 
@@ -128,6 +138,7 @@ class QAService:
             log.info(
                 "question_answered",
                 question_index=index,
+                question=question[:QUESTION_LOG_CHARS],
                 found=False,
                 reason="below_score_floor",
                 top_score=round(hits[0].score, 4) if hits else None,
@@ -146,6 +157,7 @@ class QAService:
                 log.warning(
                     "question_timeout",
                     question_index=index,
+                    question=question[:QUESTION_LOG_CHARS],
                     timeout_s=self._settings.llm_timeout_s,
                     latency_ms=int((time.perf_counter() - started) * 1000),
                 )
@@ -167,6 +179,7 @@ class QAService:
         log.info(
             "question_answered",
             question_index=index,
+            question=question[:QUESTION_LOG_CHARS],
             found=found,
             citations=len(citations),
             top_score=round(hits[0].score, 4),
