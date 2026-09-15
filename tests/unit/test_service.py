@@ -62,3 +62,27 @@ async def test_a_question_below_the_score_floor_skips_the_llm_entirely(
     assert llm.calls == 0, "retrieval missed, so there is nothing to spend a completion on"
     assert result.answers[0].found is False
     assert result.answers[0].error is None
+
+
+def test_excerpt_starts_where_the_question_is_answered() -> None:
+    """A chunk can hold several records; the excerpt should show the relevant one."""
+    from app.qa.service import _excerpt
+
+    chunk = (
+        "[0].topic: Software installation\n"
+        "[0].answer: Application whitelisting is enforced.\n"
+        "[1].topic: Network protocols\n"
+        "[1].answer: All data in transit uses TLS 1.3.\n"
+    )
+
+    excerpt = _excerpt(chunk, "Which protocols protect data in transit?")
+
+    assert excerpt.startswith("[1].topic: Network protocols")
+
+
+def test_excerpt_falls_back_to_the_start_when_nothing_matches() -> None:
+    from app.qa.service import _excerpt
+
+    chunk = "[0].topic: Software installation\n[0].answer: Whitelisting is enforced."
+
+    assert _excerpt(chunk, "zzz qqq").startswith("[0].topic")

@@ -187,14 +187,23 @@ All live in `app/config.py` and are overridable by environment variable
 ## Grounding and citations
 
 1. The document is chunked **per page**, so a chunk never straddles a page
-   boundary and every chunk carries a real page number.
+   boundary and every chunk carries a real page number. JSON is additionally
+   chunked **per record** — an item of a top-level array, or of an array under a
+   top-level key — so one questionnaire entry stays whole. Without this, a
+   record's question and its answer landed in different chunks and retrieval
+   relied on `TOP_K` sweeping up both halves.
+   Opaque identifiers (a uuid under an `id` key) are dropped before embedding:
+   they answer no question and cost tokens. Both halves must agree, so a field
+   named `id` holding a real sentence survives.
 2. Chunks are embedded once per request and indexed in faiss
    (`IndexFlatIP` over L2-normalized vectors, which is cosine similarity).
 3. All questions are embedded in **one** call, then each retrieves its own
    top-`TOP_K` passages.
 4. If the best passage scores below `MIN_SCORE`, no completion is requested at
    all — there is nothing to ground an answer in, so spending a call to be told
-   so would be waste.
+   so would be waste. In practice this is a backstop rather than a common path:
+   observed cosine scores on real documents run 0.2-0.6, so most not-found
+   results come from the model returning the sentinel, not from this floor.
 5. Otherwise the passages go into the prompt under lettered headings
    (`[Passage A]`, `[Passage B]`, ...), which instructs the model to use only
    those passages, to answer with exactly `Data-Not-Found` when they are
@@ -222,7 +231,7 @@ sampling variance there is a defect rather than creativity.
 ## Tests
 
 ```bash
-uv run pytest -q                              # 60 tests
+uv run pytest -q                              # 68 tests
 uv run ruff check . && uv run ruff format --check .
 ```
 
@@ -263,21 +272,19 @@ the expected answer.
 
 | Evidence | Verdict agreement | Answers with a citation | Cost |
 |----------|------------------|------------------------|------|
-| Sample document (contains the answers) | 15/19 | 17/17 | $0.004 |
-| A knowledge base covering ~half the topics | 13/19 | 12/12 | $0.004 |
+| Sample document (contains the answers) | **19/19** | 18/18 | $0.0035 |
+| A knowledge base covering ~half the topics | 13/19 | 12/12 | $0.0034 |
 
 Both runs agree on the row that matters most: where the answer key says
 `Data-Not-Found`, so do we.
 
-Read the two numbers together rather than as a score out of 19:
-
-- On the first run, **all four misses are `N/A` rows** — "this does not apply to
-  us", a verdict distinct from "not in the document" that this API deliberately
-  does not model. Excluding them, agreement is 15/15.
-- On the second run, the extra misses are questions whose evidence simply is not
-  in that smaller knowledge base, and the service correctly returned
-  `Data-Not-Found` for them. That looks like a lower score while being the
-  desired behaviour.
+The second number is not a worse result. Every one of its six misses is a
+`Data-Not-Found` for a topic genuinely absent from that smaller knowledge base —
+the correct response, scored as a miss because the answer key was written
+against a fuller document. The model demonstrably knew those answers, because it
+produced them from the full document in the first run, and declined when the
+evidence was removed. That is the property retrieval-grounded answering exists
+to provide.
 
 The second run is the stronger result, for a reason the score hides: the model
 demonstrably knew those answers, because it produced them from the fuller

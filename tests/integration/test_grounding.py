@@ -160,9 +160,11 @@ async def test_citations_point_at_passages_that_were_actually_retrieved(
     for result in response.json()["results"]:
         for citation in result["citations"]:
             checked += 1
-            excerpt = citation["excerpt"][:60]
-            assert any(passage.startswith(excerpt) for passage in sent), (
-                f"cited an excerpt that was never sent to the model: {excerpt!r}"
+            # The excerpt is a window inside the passage, chosen to show why the
+            # passage was cited, so it need not start at the passage's first line.
+            first_line = citation["excerpt"].splitlines()[0]
+            assert any(first_line in passage for passage in sent), (
+                f"cited an excerpt that was never sent to the model: {first_line!r}"
             )
             assert citation["page"] == 1, "a JSON document is one synthetic page"
 

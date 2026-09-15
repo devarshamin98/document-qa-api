@@ -1,6 +1,7 @@
 """Orchestration: ingest once, retrieve per question, answer concurrently."""
 
 import asyncio
+import re
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -174,7 +175,7 @@ class QAService:
 
         text, cited_positions = parse_answer(result.text)
         found = not is_not_found(text)
-        citations = _build_citations(hits, cited_positions) if found else []
+        citations = _build_citations(hits, cited_positions, question) if found else []
 
         log.info(
             "question_answered",
@@ -198,7 +199,35 @@ class QAService:
         )
 
 
-def _build_citations(hits: Sequence[ScoredChunk], cited: Sequence[int]) -> list[Citation]:
+_WORD_RE = re.compile(r"[a-z0-9]{4,}")
+
+
+def _excerpt(text: str, question: str) -> str:
+    """A readable window of the chunk, starting at the line most like the question.
+
+    A chunk can hold several records, so taking the first N characters often
+    opens mid-way through a neighbouring one. Starting at the best-matching line
+    makes the excerpt show the reader why this passage was cited.
+    """
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        return text[:EXCERPT_CHARS].strip()
+
+    wanted = set(_WORD_RE.findall(question.lower()))
+    scored = [
+        (len(wanted & set(_WORD_RE.findall(line.lower()))), -index, index)
+        for index, line in enumerate(lines)
+    ]
+    best, _, match = max(scored)
+    # One line of lead-in, so the excerpt carries the label of whatever it is
+    # quoting rather than opening on a bare value.
+    start = 0 if best == 0 else max(0, match - 1)
+    return "\n".join(lines[start:])[:EXCERPT_CHARS].strip()
+
+
+def _build_citations(
+    hits: Sequence[ScoredChunk], cited: Sequence[int], question: str
+) -> list[Citation]:
     """Map the passage positions the model cited back onto the retrieved chunks.
 
     `cited` holds 1-based positions in the prompt, not chunk ids. Out-of-range
@@ -212,7 +241,7 @@ def _build_citations(hits: Sequence[ScoredChunk], cited: Sequence[int]) -> list[
     return [
         Citation(
             chunk_id=chunk.id,
-            excerpt=chunk.text[:EXCERPT_CHARS].strip(),
+            excerpt=_excerpt(chunk.text, question),
             page=chunk.page,
         )
         for chunk in chosen

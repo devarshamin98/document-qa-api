@@ -30,6 +30,14 @@ Rules:
    partial answer. The exact string is required.
 3. Otherwise "answer" is one to four sentences of plain prose. Be specific: name
    the providers, regions, timeframes or controls the passages state.
+3a. Begin the answer with "N/A" only when the passages say the question is
+   outside this organisation's scope: the regulation does not cover them, or
+   the thing asked about is not part of how they operate at all. Then give the
+   reason from the passages.
+   Do not use "N/A" for a negative answer. "We do not have a dedicated X",
+   "that control is not implemented", "we do not include Y" are all "No" — the
+   question applies and the answer is negative. And neither is "{NOT_FOUND}",
+   which means the passages say nothing on the subject either way.
 4. "sources" lists the letters from the [Passage X] headings you actually used,
    for example ["A", "C"]. Use only letters that appear in a heading.
 """
